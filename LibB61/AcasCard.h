@@ -17,7 +17,7 @@
 class AcasCard
 {
 public:
-	static std::shared_ptr<AcasCard> GetSmartcardAcas()
+	static std::shared_ptr<AcasCard> GetSmartcardAcas(std::string targetReaderName)
 	{
 		SCARDCONTEXT context;
 		LONG result = SCardEstablishContext(SCARD_SCOPE_SYSTEM, nullptr, nullptr, &context);
@@ -40,25 +40,31 @@ public:
 			throw std::runtime_error("Failed to list smart card readers");
 		}
 
-		std::vector<std::string> readerNames;
-		const char* reader = readersBuffer.data();
-		while (*reader != '\0') {
-			readerNames.push_back(reader);
-			reader += strlen(reader) + 1;
+		std::string readerName;
+		if (targetReaderName.empty()) {
+			std::vector<std::string> readerNames;
+			const char* reader = readersBuffer.data();
+			while (*reader != '\0') {
+				readerNames.push_back(reader);
+				reader += strlen(reader) + 1;
+			}
+
+			// "Windows Hello"で始まるリーダーを除外
+			auto itr = std::remove_if(readerNames.begin(), readerNames.end(), [](std::string name) {
+				return name.find("Windows Hello") == 0;
+				});
+			readerNames.erase(itr, readerNames.end());
+
+			if (readerNames.empty()) {
+				SCardReleaseContext(context);
+				throw std::runtime_error("No smartcard reader found");
+			}
+
+			readerName = readerNames.front();
 		}
-
-		// "Windows Hello"で始まるリーダーを除外
-		auto itr = std::remove_if(readerNames.begin(), readerNames.end(), [](std::string name) {
-			return name.find("Windows Hello") == 0;
-			});
-		readerNames.erase(itr, readerNames.end());
-
-		if (readerNames.empty()) {
-			SCardReleaseContext(context);
-			throw std::runtime_error("No smartcard reader found");
+		else {
+			readerName = targetReaderName;
 		}
-
-		auto readerName = readerNames.front();
 
 		SCARDHANDLE hCardHandle = 0;
 		DWORD protocol;

@@ -20,7 +20,8 @@ B61Decoder::~B61Decoder() {
 const BOOL B61Decoder::Initialize(DWORD dwRound)
 {
 	try {
-		acas = AcasCard::GetSmartcardAcas();
+		LoadIniFile();
+		acas = AcasCard::GetSmartcardAcas(scardReaderName);
 	}
 	catch (exception& e) {
 		cerr << e.what() << endl;
@@ -36,7 +37,7 @@ const BOOL B61Decoder::Initialize(DWORD dwRound)
 	writeSize = 0;
 
 	try {
-		acas->SetMasterKey(HexStringToBytes(GetMasterKeyString()));
+		acas->SetMasterKey(HexStringToBytes(masterKeyString));
 	}
 	catch (exception& e) {
 		cerr << e.what() << endl;
@@ -69,7 +70,7 @@ const BOOL B61Decoder::Decode(BYTE* pSrcBuf, const DWORD dwSrcSize, BYTE** ppDst
 
 		while (true) {
 		STEP0:
-			if (buffer.size() < 1) {
+			if (buffer.size() < 2) {
 				break;
 			}
 			if (!TlvHelpers::IsValidTlvHeader(buffer)) {
@@ -194,7 +195,7 @@ const BOOL B61Decoder::Reset(void)
 
 	try {
 		acas.reset();
-		acas = AcasCard::GetSmartcardAcas();
+		acas = AcasCard::GetSmartcardAcas(scardReaderName);
 	}
 	catch (exception& e) {
 		cerr << e.what() << endl;
@@ -209,9 +210,10 @@ const BOOL B61Decoder::Reset(void)
 // ini ファイルは以下のような内容
 // [CardReader]
 // CardMasterKey=AABBCCDDEEFF0011223344556677889900
+// SCardName=Generic Smart Card Reader Interface 0
 /// </summary>
 /// <returns></returns>
-std::string B61Decoder::GetMasterKeyString()
+void B61Decoder::LoadIniFile()
 {
 	//INIファイル名の取得
 	std::string moduleFilename;
@@ -233,15 +235,17 @@ std::string B61Decoder::GetMasterKeyString()
 	}
 
 	const int BUF_SIZE = 512;
-	char keyBuffer[BUF_SIZE];
-	GetPrivateProfileStringA("CardReader", "CardMasterKey", "", keyBuffer, BUF_SIZE, moduleFilename.c_str());
+	char readBuffer[BUF_SIZE];
+	GetPrivateProfileStringA("CardReader", "CardMasterKey", "", readBuffer, BUF_SIZE, moduleFilename.c_str());
 
-	auto masterKey = std::string(keyBuffer);
+	masterKeyString = std::string(readBuffer);
 	const int KEY_SIZE = 64;
-	if (masterKey.size() != KEY_SIZE) {
+	if (masterKeyString.size() != KEY_SIZE) {
 		throw runtime_error(std::format("Not match card_master_key length in {0}.", moduleFilename));
 	}
-	return masterKey;
+
+	GetPrivateProfileStringA("CardReader", "SCardName", "", readBuffer, BUF_SIZE, moduleFilename.c_str());
+	scardReaderName = std::string(readBuffer);
 }
 
 

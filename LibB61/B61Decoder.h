@@ -58,12 +58,15 @@ private:
 	std::vector<BYTE> newData;
 	std::vector<BYTE> decBuffer;
 
+	std::string masterKeyString;
+	std::string scardReaderName;
+
 	size_t readSize = 0;
 	size_t writeSize = 0;
 
 	int step = 0;
 
-	static std::string GetMasterKeyString();
+	void LoadIniFile();
 	static std::vector<BYTE> HexStringToBytes(const std::string& hexStr);
 
 };

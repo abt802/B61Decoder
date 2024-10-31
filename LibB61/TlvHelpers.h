@@ -23,7 +23,7 @@ public:
 
 	static bool IsValidTlvHeader(const std::deque<BYTE>& bytes)
 	{
-		if (bytes.size() < 1) {
+		if (bytes.size() < 2) {
 			throw std::out_of_range("Too short for TlvHeader");
 		}
 		auto tlvPType = (TlvPacketType)bytes[1];
